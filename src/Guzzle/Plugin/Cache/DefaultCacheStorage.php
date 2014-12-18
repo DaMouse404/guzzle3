@@ -85,6 +85,7 @@ class DefaultCacheStorage implements CacheStorageInterface
         $bodyDigest = null;
         if ($response->getBody() && $response->getBody()->getContentLength() > 0) {
             $bodyDigest = $this->getBodyKey($request->getUrl(), $response->getBody());
+            echo 'Saving body for ', $ttl, "\n";
             $this->cache->save($bodyDigest, (string) $response->getBody(), $ttl);
         }
 
@@ -96,6 +97,7 @@ class DefaultCacheStorage implements CacheStorageInterface
             $currentTime + $ttl
         ));
 
+        echo 'Saving headers', "\n";
         $this->cache->save($key, serialize($entries));
     }
 

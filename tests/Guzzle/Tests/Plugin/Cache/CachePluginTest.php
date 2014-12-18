@@ -438,4 +438,39 @@ class CachePluginTest extends \Guzzle\Tests\GuzzleTestCase
         $request->setResponse(new Response(200), true);
         $request->send();
     }
+
+    public function testStaleIfError() {
+        $this->getServer()->flush();
+        $this->getServer()->enqueue(array(
+            "HTTP/1.1 200 OK\r\nCache-Control: max-age=1, stale-if-error=600\r\nContent-Length: 1\r\n\r\nX",
+            "HTTP/1.1 503 Service Unavailable\r\nContent-Length:0",
+            //"HTTP/1.1 503 Service Unavailable\r\nCache-Control: max-age: 1, stale-if-error=600\r\nContent-Length:0",
+            "HTTP/1.1 200 OK\r\nCache-Control: max-age=1, stale-if-error=600\r\nContent-Length: 1\r\n\r\nY",
+            "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0"
+        ));
+
+        $plugin = new CachePlugin();
+        $client = new Client($this->getServer()->getUrl());
+        $client->addSubscriber($plugin);
+
+        echo "\nRequest 1\n";
+        $request1 = $client->get('/foo')->send();
+        sleep(2);
+        echo "\nRequest 2\n";
+        $request2 = $client->get('/foo')->send();
+        sleep(2);
+        echo "\nRequest 3\n";
+        $request3 = $client->get('/foo')->send();
+        echo "\nRequest 4\n";
+        $request4 = $client->get('/foo')->send();
+        sleep(2);
+        echo "\nRequest 5\n";
+        $request5 = $client->get('/foo')->send();
+
+        var_dump($request1->getBody(true));
+        var_dump($request2->getBody(true));
+        var_dump($request3->getBody(true));
+        var_dump($request4->getBody(true));
+        var_dump($request5->getBody(true));
+    }
 }

@@ -106,7 +106,8 @@ class CachePlugin implements EventSubscriberInterface
         $request->addHeader('Via', sprintf('%s GuzzleCache/%s', $request->getProtocolVersion(), Version::VERSION));
 
         if (!$this->canCache->canCacheRequest($request)) {
-            switch ($request->getMethod()) {
+            echo 'Cannot cache', "\n";
+              switch ($request->getMethod()) {
                 case 'PURGE':
                     $this->purge($request);
                     $request->setResponse(new Response(200, array(), 'purged'));
@@ -123,7 +124,8 @@ class CachePlugin implements EventSubscriberInterface
         }
 
         if ($response = $this->storage->fetch($request)) {
-            $params = $request->getParams();
+            echo 'Inspecting cache', "\n";
+              $params = $request->getParams();
             $params['cache.lookup'] = true;
             $response->setHeader(
                 'Age',
@@ -134,7 +136,11 @@ class CachePlugin implements EventSubscriberInterface
                 if (!isset($params['cache.hit'])) {
                     $params['cache.hit'] = true;
                 }
+                echo "Serving from cache\n";
+
                 $request->setResponse($response);
+            } else {
+                echo "Request cannot be satisfied from cache\n";
             }
         }
     }
@@ -153,6 +159,7 @@ class CachePlugin implements EventSubscriberInterface
             $this->canCache->canCacheRequest($request) &&
             $this->canCache->canCacheResponse($response)
         ) {
+        echo 'Caching', "\n";
             $this->storage->cache($request, $response);
         }
 
@@ -231,14 +238,21 @@ class CachePlugin implements EventSubscriberInterface
         $reqc = $request->getHeader('Cache-Control');
         $resc = $response->getHeader('Cache-Control');
 
+        echo "Response Age: $responseAge \n";
+
         // Check the request's max-age header against the age of the response
         if ($reqc && $reqc->hasDirective('max-age') &&
             $responseAge > $reqc->getDirective('max-age')) {
             return false;
         }
 
+        echo "getMaxAge: ", $response->getMaxAge(), "\n";
+        echo "Response CC: ", (string) $resc, "\n";
+        echo "Response Max Age: ", $resc->getDirective('max-age'), "\n";
+
         // Check the response's max-age header
         if ($response->isFresh() === false) {
+            echo 'Not fresh', "\n";
             $maxStale = $reqc ? $reqc->getDirective('max-stale') : null;
             if (null !== $maxStale) {
                 if ($maxStale !== true && $response->getFreshness() < (-1 * $maxStale)) {
@@ -289,6 +303,8 @@ class CachePlugin implements EventSubscriberInterface
         if (is_numeric($responseStaleIfError) && $response->getAge() - $response->getMaxAge() > $responseStaleIfError) {
             return false;
         }
+
+        echo "Error served from Cache\n";
 
         return true;
     }
